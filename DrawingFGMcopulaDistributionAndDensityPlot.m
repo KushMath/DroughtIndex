@@ -1,0 +1,126 @@
+%% 
+%This code gives the copula selecton process
+close all;
+clear all;
+clc;
+
+%% 
+load('NC.mat');
+
+R = NC(:, 1);
+T = NC(:, 2);
+%% Generating CDF of Rainfall
+%beta marginal parameters (from RainfallBetaEstimation_Python.ipynb)
+a1= 0.77897; 
+b1= 5.27087;
+
+R_new=(R-min(R))/(max(R)-min(R));
+u=betacdf(R_new,a1,b1);
+
+%% Generating CDF of Temperature
+%temperature marginal parameters (from GMMforTemperature.m)
+mu1=24.8586;
+mu2=28.65893;
+sigma1= 0.80152;
+sigma2=1.31911;
+
+percentage1 = 0.31;
+percentage2 = 0.69;
+
+numDataPoints1 = numel(T);
+subsetSize1 = round(percentage1 * numDataPoints1);
+% Select a random subset of data for fitting
+subset1 = datasample(T, subsetSize1, 'Replace', false);
+T1_cdf = normcdf(subset1,mu1,sigma1);
+
+
+numDataPoints2 = numel(T);
+subsetSize2 = round(percentage2 * numDataPoints2);
+
+% Select a random subset of data for fitting
+subset2= datasample(T, subsetSize2, 'Replace', false);
+T2_cdf=normcdf(subset2,mu2,sigma2);
+
+T_CDF=[T1_cdf; T2_cdf];
+
+v=T_CDF;
+%% 
+
+tau=corr(u,v,'type','kendall');
+tau; %-0.007111774604487
+%% 
+%Writing u,v data to an excel file (optional)
+% % Write the subset1 data to an Excel file
+% filename = 'UV_data_matlab.xlsx'; % Replace with your desired filename
+% sheetname = 'Sheet 1'; % Replace with your desired sheet name
+% xlswrite(filename,u , sheetname);
+% disp('Data written to Excel file.');
+% %% 
+% % Write the subset1 data to an Excel file
+% filename = 'UV_data_matlab.xlsx'; % Replace with your desired filename
+% sheetname = 'Sheet 2'; % Replace with your desired sheet name
+% xlswrite(filename,v, sheetname);
+% disp('Data written to Excel file.');
+
+
+%For a generated data set repeating the above process
+
+%Rainfall --->u
+
+a1= 0.77897; 
+b1= 5.27087;
+
+n=1000;
+
+%Generating rainfall data
+R=betarnd(a1,b1,n,1);
+
+%R----->uniform distribution
+R_CDF=betacdf(R,a1,b1);
+%% 
+
+%Temp --->mixed gaussian -->v
+mu1=24.8586;
+mu2=28.65893;
+sigma1= 0.80152;
+sigma2=1.31911;
+
+x=randsample(n,n*0.3);
+
+T1=normrnd(mu1,sigma1,n,1);
+T1_cdf=normcdf(T1,mu1,sigma1,n,1);
+T11=T1_cdf(x);
+y=randsample(n,n*0.7);
+T2=normrnd(mu2,sigma2,n,1);
+T2_cdf=normcdf(T2,mu2,sigma2,n,1);
+T22=T2_cdf(y);
+T=zeros(n,1);
+T(1:n*0.3)=T11;
+T((n*0.3)+1:end)=T22;
+
+%% 
+%theta=-1
+u=R_CDF;
+v=T;
+%% 
+
+tau=corr(u,v,'type','kendall');
+
+%% Generating plots
+
+plotFGMdensity()
+plotFGMdistribution()
+%% 
+% [C, hContour] = contour(u, v, c, 20);
+% colormap(winter)
+% clabel(C, hContour);  % Label the contour lines with their values
+% hContour.LevelList = round(hContour.LevelList, 4);
+% figsettings
+% xlabel('u','Interpreter','latex');
+% ylabel('v','Interpreter','latex');
+% zlabel('c(u,v)','Interpreter','latex');
+% grid off;
+
+
+
+
